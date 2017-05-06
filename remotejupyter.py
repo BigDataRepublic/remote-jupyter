@@ -22,6 +22,16 @@ def sendJson(self, status, bodyObject):
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('content-type', 'plain/text; charset=UTF-8')
+        self.send_header('access-control-allow-origin', '*')
+        self.send_header('access-control-allow-headers', self.headers.get('Access-Control-Request-Headers'))
+        self.send_header('access-control-allow-methods', self.headers.get('Access-Control-Request-Method'))
+        self.end_headers()
+        self.wfile.write("ok".encode("utf-8"))
+
     def do_POST(self):
         content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
