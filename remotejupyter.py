@@ -10,51 +10,44 @@ from functools import partial
 
 Handler = http.server.SimpleHTTPRequestHandler
 
+def sendJson(self, status, bodyObject):
+    self.send_response(status)
+    self.send_header('access-control-allow-origin', '*')
+    self.send_header('content-type', 'application/json; charset=UTF-8')
+    self.send_header('cache-control', 'no-store')
+    self.end_headers()
+    self.wfile.write(json.dumps(bodyObject).encode("utf-8"))
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
     def do_POST(self):
         content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
+
         try:
             requestObject = json.loads(post_body)
         except Exception as e:
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e), "phase": "request parsing"}).encode("utf-8"))
+            sendJson(self, 400, {"error": str(e), "phase": "request parsing"})
             return
+
         try:
             responseObject = self.server.getImplementation()(requestObject)
         except Exception as e:
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e), "phase": "calling implementation"}).encode("utf-8"))
-            return
-        try:
-            response = json.dumps(responseObject).encode("utf-8")
-        except Exception as e:
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e), "phase": "response serialization"}).encode("utf-8"))
+            sendJson(self, 400, {"error": str(e), "phase": "calling implementation"})
             return
 
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(response)
+        try:
+            sendJson(self, 200, responseObject)
+        except Exception as e:
+            sendJson(self, 400, {"error": str(e), "phase": "response serialization and sending"})
+            return
 
 
     def do_GET(self):
-        handlers = self.server.getImplementation()
-        self.send_response(400)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(
-            {"handler memory id": id(self.server.getImplementation())}
-        ).encode("utf-8"))
+        sendJson(self, 200, {"handler memory id": id(self.server.getImplementation())})
+
 
 def getImplementation(q, state):
     try:
@@ -66,7 +59,7 @@ def getImplementation(q, state):
 
 def start(q):
     socketserver.TCPServer.allow_reuse_address = True
-    sys.stderr.write('Starting server at port 5000\n')
+    sys.stderr.write('Starting server at port http://localhost:5000/\n')
     with socketserver.TCPServer(("", 5000), Handler) as httpd:
         httpd.getImplementation = partial(getImplementation, q, [lambda x: {"not implemented yet"}])
         httpd.serve_forever()
