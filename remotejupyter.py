@@ -5,7 +5,7 @@ import socketserver
 import json
 import queue
 import sys
-
+import traceback
 from functools import partial
 
 Handler = http.server.SimpleHTTPRequestHandler
@@ -39,19 +39,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         try:
             requestObject = json.loads(post_body)
         except Exception as e:
-            sendJson(self, 400, {"error": str(e), "phase": "request parsing"})
+            sendJson(self, 400, {"error": str(e), "phase": "request parsing", "stack": traceback.format_exc()})
             return
 
         try:
             responseObject = self.server.getImplementation()(requestObject)
         except Exception as e:
-            sendJson(self, 400, {"error": str(e), "phase": "calling implementation"})
+            sendJson(self, 400, {"error": str(e), "phase": "calling implementation", "stack": traceback.format_exc()})
             return
 
         try:
             sendJson(self, 200, responseObject)
         except Exception as e:
-            sendJson(self, 400, {"error": str(e), "phase": "response serialization and sending"})
+            sendJson(self, 400, {"error": str(e), "phase": "response serialization and sending", "stack": traceback.format_exc()})
             return
 
 
